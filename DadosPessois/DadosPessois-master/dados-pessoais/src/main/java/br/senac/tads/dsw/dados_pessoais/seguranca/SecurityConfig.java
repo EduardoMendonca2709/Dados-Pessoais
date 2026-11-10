@@ -1,6 +1,5 @@
 package br.senac.tads.dsw.dados_pessoais.seguranca;
 
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -14,43 +13,50 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import java.util.List;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
-		@Bean
+	private final JwtFilter jwtFilter;
+
+	public SecurityConfig(JwtFilter jwtFilter) {
+		this.jwtFilter = jwtFilter;
+	}
+
+	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 		http
-
-		.csrf(csrf -> csrf.disable())
-
-
+			.csrf(csrf -> csrf.disable())
 			.headers(headers -> headers
 				.frameOptions(frame -> frame.disable()))
-
-
 			.sessionManagement(session -> session
 				.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
-
 			.authorizeHttpRequests(auth -> auth
 				.requestMatchers(HttpMethod.POST, "/login").permitAll()
 				.requestMatchers("/h2-console/**").permitAll()
-				.requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**")
-				.permitAll()
+				.requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+				.requestMatchers("/me").authenticated()
+				.requestMatchers("/*.html", "/*.css", "/*.js").permitAll()
 
-				.anyRequest().authenticated()
-			);
+				// =================================================
+				// REGRAS PARA ENDPOINTS DE PESSOAS (PARTE 1)
+				// =================================================
+				// Leitura de pessoas: público
+				.requestMatchers(HttpMethod.GET, "/pessoas", "/pessoas/**").permitAll()
+				// Escrita exige autenticação (o @PreAuthorize no controller exigirá ROLE_ADMIN)
+				.requestMatchers(HttpMethod.POST, "/pessoas", "/pessoas/**").authenticated()
+				.requestMatchers(HttpMethod.PUT, "/pessoas/**").authenticated()
+				.requestMatchers(HttpMethod.DELETE, "/pessoas/**").authenticated()
+				// =================================================
+
+				.anyRequest().authenticated() // MANTIDO NO FINAL
+			)
+			.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
 		return http.build();
 	}
-
 
 	@Bean
 	public AuthenticationManager authenticationManager(
@@ -61,25 +67,9 @@ public class SecurityConfig {
 		return new ProviderManager(provider);
 	}
 
-
 	@Bean
 	@SuppressWarnings("deprecation")
 	public PasswordEncoder passwordEncoder() {
 		return NoOpPasswordEncoder.getInstance();
-	}
-
-	@Bean
-	public CorsConfigurationSource corsConfigurationSource() {
-		CorsConfiguration config = new CorsConfiguration();
-
-		config.setAllowedOrigins(List.of("http://localhost:3000", "https://meu-frontend.com"));
-
-		config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-
-		config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
-
-		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-		source.registerCorsConfiguration("/**", config); // aplica a todos os caminhos
-		return source;
 	}
 }

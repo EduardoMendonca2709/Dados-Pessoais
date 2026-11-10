@@ -1,18 +1,18 @@
 package br.senac.tads.dsw.dados_pessoais;
 
 import java.net.URI;
+import java.util.List;
+import java.util.Optional;
 
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
-
-import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/pessoas")
@@ -43,6 +43,7 @@ public class PessoaController {
 		return p.get();
 	}
 
+	@PreAuthorize("hasRole('ADMIN')")
 	@PostMapping("/sem-validacao")
 	public ResponseEntity<PessoaDto> incluirNovo(@RequestBody @Valid PessoaDto pessoa){
 		pessoaService.incluirNovaPessoa(pessoa);
@@ -51,6 +52,7 @@ public class PessoaController {
 		return ResponseEntity.created(location).build();
 	}
 
+	@PreAuthorize("hasRole('ADMIN')")
 	@PutMapping("/{username}")
 	public ResponseEntity<?> atualizar(@PathVariable("username") String username,
 									   @RequestBody @Valid PessoaAlteracaoDto pessoa){
@@ -58,6 +60,7 @@ public class PessoaController {
 		return ResponseEntity.ok().body(pessoaAlterada);
 	}
 
+	@PreAuthorize("hasRole('ADMIN')")
 	@DeleteMapping("/{username}")
 	public ResponseEntity<?> remover(@PathVariable("username") String username){
 		pessoaService.removerPessoa(username);
